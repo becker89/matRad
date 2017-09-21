@@ -1,4 +1,4 @@
-function [radDepthV,geoDistV] = matRad_rayTracing(stf,ct,V,rot_coordsV,lateralCutoff)
+function [radDepthV,radDepthCube,geoDistV] = matRad_rayTracing(stf,ct,V,rot_coordsV,lateralCutoff)
 % %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 % matRad visualization of two-dimensional dose distributions on ct including
 % segmentation
@@ -44,7 +44,7 @@ rayMx_bev_y = max(rot_coordsV(:,2)) + max([ct.resolution.x ct.resolution.y ct.re
 rayMx_bev_y = rayMx_bev_y + stf.sourcePoint_bev(2);
 
 % calculate geometric distances
-if nargout > 1
+if nargout > 2
     geoDistV = sqrt(sum(rot_coordsV.^2,2));
 end
 
@@ -112,8 +112,9 @@ for i = 1:size(rayMx_world,1)
     x_dist = coords(ixHitVoxel,1).*scale_factor - rayMx_bev(i,1);
     z_dist = coords(ixHitVoxel,3).*scale_factor - rayMx_bev(i,3);
 
-    ixRememberFromCurrTracing = x_dist > -raySelection & x_dist <= raySelection ...
-                              & z_dist > -raySelection & z_dist <= raySelection;
+    ixRememberFromCurrTracing = (x_dist > -raySelection & x_dist <= raySelection ...
+                               & z_dist > -raySelection & z_dist <= raySelection) ...
+                               | isinf(scale_factor);
 
     if any(ixRememberFromCurrTracing) > 0
 
@@ -129,6 +130,7 @@ for i = 1:size(rayMx_world,1)
 
             % write radiological depth for voxel which we want to remember
             radDepthCube{j}(ixHitVoxel(ixRememberFromCurrTracing)) = dCum(ixRememberFromCurrTracing);
+
         end
     end  
     
@@ -138,4 +140,7 @@ end
 for i = 1:ct.numOfCtScen
     radDepthV{i} = radDepthCube{i}(V);
 end
+
+radDepthCube = radDepthCube;
+
 
