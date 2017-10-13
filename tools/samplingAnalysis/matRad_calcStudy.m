@@ -39,8 +39,9 @@ else
 end
 
 % require minimum number of scenarios to ensure proper statistics
-if multScen.numOfRangeShiftScen + sum(multScen.numOfShiftScen) < 12
-    warning('You use a very low number of scenarios. Proceeding is not recommended.');
+if multScen.numOfRangeShiftScen + sum(multScen.numOfShiftScen) < 20
+    matRad_dispToConsole('You use a very low number of scenarios. Proceeding is not recommended.',param,'warning');
+    param.sufficientStatistics = false;
     pause(10);
 end
 

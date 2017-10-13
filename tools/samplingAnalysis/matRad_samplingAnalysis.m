@@ -99,7 +99,7 @@ end
         dvhStat.percDVH = NaN * ones(numel(percentiles),size(dvh{1},2));
         
         for j = 1:size(dvhMat,2)
-            wQ =  matRad_weightedQuantile(dvhMat(:,j), percentiles, w', false, 'nearest');
+            wQ =  matRad_weightedQuantile(dvhMat(:,j), percentiles, w', false, 'none');
             dvhStat.percDVH(:,j) = wQ;
         end
 
@@ -122,7 +122,7 @@ end
                 qiStatH(2).(fields{j}) = min([qiStruct(:).(fields{j})]);
                 qiStatH(3).(fields{j}) = max([qiStruct(:).(fields{j})]);
                 qiStatH(4).(fields{j}) = std([qiStruct(:).(fields{j})],w);
-                wQ = matRad_weightedQuantile([qiStruct(:).(fields{j})], percentiles, w', false, 'nearest');
+                wQ = matRad_weightedQuantile([qiStruct(:).(fields{j})], percentiles, w', false, 'none');
                 for k = 1:numel(wQ)
                     sIx = k + 4;
                     qiStatH(sIx).(fields{j}) = wQ(k);

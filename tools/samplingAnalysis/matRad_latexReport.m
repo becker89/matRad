@@ -62,6 +62,13 @@ end
 
 
 %% insert standard patient information
+% issue warning for insufficient number of scenarios
+if exist('param','var') && isfield(param,'sufficientStatistics')
+    warnMessage = 'Insufficient statistics. Handle with care.';
+else
+    warnMessage = '';
+end
+
 try
     % import patient information
     patientInformation.firstName = ct.dicomInfo.PatientName.GivenName;
@@ -81,6 +88,7 @@ planInformation.couchAngles = num2str(pln.couchAngles);
 planInformation.modality = pln.radiationMode;
 
 line = cell(0);
+line =  [line; '\newcommand{\warnMessage}{',warnMessage,'}'];
 line =  [line; '\newcommand{\patientFirstName}{',patientInformation.firstName,'}'];
 line =  [line; '\newcommand{\patientLastName}{',patientInformation.lastName,'}'];
 line =  [line; '\newcommand{\patientSex}{',patientInformation.sex,'}'];

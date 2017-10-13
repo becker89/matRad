@@ -43,7 +43,8 @@
 \usepackage{grffile}
 \usepackage{amsmath}
 \usepackage{booktabs}
-%\usepackage{float}
+\usepackage{color}
+\usepackage{fancyhdr}
 \usepackage{footnote}
 \makesavenoteenv{figure}
 
@@ -62,7 +63,7 @@
 \input{data/patientInformation.tex}
 
 \title{Uncertainty Sampling Report}
-\subtitle{\patientLastName{}, \patientFirstName{}, \patientID}
+\subtitle{\patientLastName{}, \patientFirstName{}, \patientID\\ \textcolor{red}{\warnMessage}}
 \author{\operator}
 % \date{\today}
 \maketitle
