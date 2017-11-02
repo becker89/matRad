@@ -125,7 +125,11 @@ for runVoi = 1:size(cst,1)
         end
         matRad_dispToConsole(voiPrint,param,'info','%s\n')
     else    
-    matRad_dispToConsole([num2str(cst{runVoi,1}) ' ' cst{runVoi,2} ' - No dose information.\n'],param,'info') 
+        matRad_dispToConsole([num2str(cst{runVoi,1}) ' ' cst{runVoi,2} ' - No dose information.\n'],param,'info') 
+        listOfFields = fieldnames(QI);
+        for j = 1:numel(listOfFields)
+            QI(runVoi).(listOfFields{j}) = [];
+        end
     end
     
 end

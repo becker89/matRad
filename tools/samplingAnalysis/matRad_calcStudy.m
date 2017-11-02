@@ -70,12 +70,12 @@ pln.sampling = true;
 [mRealizations, cst, pln, nominalScenario]  = matRad_sampling(ct,stf,cst,pln,resultGUI.w,examineStructures, multScen, param);
 
 %% perform analysis
-[structureStat, doseStat] = matRad_samplingAnalysis(ct,cst,pln.multScen.subIx,mRealizations,pln.multScen.scenProb);
+[structureStat, doseStat, param] = matRad_samplingAnalysis(ct,cst,pln.multScen.subIx,mRealizations,pln.multScen.scenProb,nominalScenario, pln.multScen, param);
 
 %% save
 param.reportPath = fullfile('report','data');
 filename = 'resultSampling';
-save(filename);
+save(filename, '-v7.3');
 
 %% generate report
 

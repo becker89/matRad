@@ -1,4 +1,4 @@
-function [hCMap,hDose,hCt,hContour,hIsoDose] = matRad_plotSliceWrapper(axesHandle,ct,cst,cubeIdx,dose,plane,slice,thresh,alpha,contourColorMap,doseColorMap,colorMapLabel,doseWindow,doseIsoLevels)
+function [hCMap,hDose,hCt,hContour,hIsoDose] = matRad_plotSliceWrapper(axesHandle,ct,cst,cubeIdx,dose,plane,slice,thresh,alpha,contourColorMap,doseColorMap,colorMapLabel,doseWindow,doseIsoLevels,disableInterpretor)
 % %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 % matRad tool function to directly plot a complete slice of a ct with dose
 % including contours and isolines.
@@ -66,6 +66,9 @@ end
 if ~exist('colorMapLabel','var')
    colorMapLabel = '';
 end
+if ~exist('disableInterpretor','var')
+    disableInterpretor = true;
+end
 
 
 set(axesHandle,'YDir','Reverse');
@@ -85,6 +88,8 @@ daspect(axesHandle,[1 1 1]);
 colormap(doseColorMap);
 hCMap = matRad_plotColorbar(axesHandle,doseColorMap,doseWindow,'Location','EastOutside');
 set(get(hCMap,'ylabel'),'String', colorMapLabel,'fontsize',8);
-set(get(hCMap,'ylabel'),'interpreter','none');
+if disableInterpretor
+    set(get(hCMap,'ylabel'),'interpreter','none');
+end
 end
 
