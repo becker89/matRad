@@ -81,11 +81,12 @@ save(filename, '-v7.3');
 
 cd(param.outputPath)
 mkdir(fullfile('report','data'));
+mkdir(fullfile('report','data','frames'));
 mkdir(fullfile('report','data','figures'));
 copyfile(fullfile(matRadPath,'tools','samplingAnalysis','main_template.tex'),fullfile('report','main.tex'));
 
 % generate actual latex report
-matRad_latexReport(ct, cst, pln, nominalScenario, structureStat, doseStat, resultGUI, param);
+matRad_latexReport(ct, cst, pln, nominalScenario, structureStat, doseStat, mRealizations, resultGUI, param);
 
 cd('report');
 if ispc

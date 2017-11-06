@@ -26,6 +26,7 @@
 \usepackage[utf8]{inputenc}
 \usepackage{amsmath}
 \usepackage{graphicx}
+\usepackage[autoplay,loop]{animate}
 \usepackage[verbose]{placeins}
 \usepackage{fullpage}
 \usepackage{caption}
@@ -61,6 +62,7 @@
 
 
 \begin{document}
+\input{data/parameters.tex}
 \input{data/patientInformation.tex}
 
 \title{Uncertainty Sampling Report}
@@ -68,7 +70,12 @@
 \author{\operator}
 % \date{\today}
 \maketitle
+\begin{figure}[!b]
+  \centering
+  \animategraphics[controls,width = .8\textwidth]{\framerate}{data/frames/anim_}{\firstframe}{\lastframe}
+\end{figure}
 
+\newpage
 \tableofcontents
 
 \newpage

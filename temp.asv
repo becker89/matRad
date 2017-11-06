@@ -1,0 +1,38 @@
+%%
+slice = 18;
+ctDim = size(resultGUI.physicalDose);
+expDoseSlice = resultGUI.physicalDose(:,:,slice);
+expDoseSliceIx = find(expDoseSlice) + (slice-1)*prod(ctDim(1:2));
+
+% check whether expDoseSliceIx is subset of subIx
+assert(all(ismember(expDoseSliceIx, pln.multScen.subIx)))
+
+
+
+%%
+binWidth = 0.5333;
+
+%% show validation of samples
+slice = 80;
+line = 80;
+
+f = figure;
+colors = summer(size(mRealizations,2));
+hold on;
+for i = 1:size(mRealizations,2)
+    doseCube = zeros(size(ct.cube{1}));
+    doseCube(pln.multScen.subIx) = mRealizations(:,i);
+    
+    plot(doseCube(line,:,slice), 'Color', colors(i,:))
+end
+
+%% test gamma index
+cube1 = nominalScenario.RBExD;
+cube2 = doseStat.meanCubeW;
+
+slice = 80;
+outputCube = matRad_gammaIndex(nominalScenario.RBExD,doseStat.meanCubeW,[ct.resolution.x ct.resolution.y ct.resolution.z],[2 2]);
+f = figure;
+imagesc(outputCube(:,:,slice),[0 2])
+
+%% save niklas animation

@@ -1,4 +1,4 @@
-function matRad_latexReport(ct, cst, pln, nominalScenario, structureStat, doseStat, resultGUI, param)
+function param = matRad_latexReport(ct, cst, pln, nominalScenario, structureStat, doseStat, mRealizations, resultGUI, param)
 % %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 % matRad uncertainty analysis report generaator function
 % 
@@ -59,7 +59,6 @@ for i = 1:size(cst,1)
         cst{i,5}.Visible = false;
     end
 end
-
 
 %% insert standard patient information
 % issue warning for insufficient number of scenarios
@@ -187,7 +186,7 @@ for plane=1:3
             doseCube = doseStat.gammaAnalysis.gammaCube;
             colorMapLabel = 'gamma index';
             fileSuffix = 'gamma';
-            gammaColormap = matRad_getColormap('gammaIndex')
+            gammaColormap = matRad_getColormap('gammaIndex');
             matRad_plotSliceWrapper(ax,ct,cst,1,doseCube,plane,slice,[],[],colors,gammaColormap,colorMapLabel,[0 2]);
         elseif cubesToPlot == 3
             if isfield(nominalScenario,'RBExDose')
@@ -207,6 +206,31 @@ for plane=1:3
         close
     end
 end
+
+%% fancy animation
+param.confidenceValue = 0.9;
+
+slice = round(pln.isoCenter(1,plane) / ct.resolution.z,0);            
+outPath = fullfile(outputPath, 'frames');
+if isfield(nominalScenario,'RBExDose')
+    legendColorbar = 'physical Dose [Gy]';
+else
+    legendColorbar = 'RBExDose [Gy(RBE)]';
+end
+matRad_createAnimationForLatexReport(param.confidenceValue, ct, cst, slice, doseStat.meanCubeW, mRealizations, pln.multScen.scenProb, pln.multScen.subIx, outPath, legendColorbar);
+
+line = cell(0);
+line =  [line; '\newcommand{\framerate}{24}'];
+line =  [line; '\newcommand{\firstframe}{1}'];
+line =  [line; '\newcommand{\lastframe}{120}'];
+
+fid = fopen(fullfile(outputPath,'parameters.tex'),'w');
+for i = 1:numel(line)
+    text = regexprep(line{i},{'\','_'},{'\\\','-'});
+    fprintf(fid,text);
+    fprintf(fid,'\n');
+end
+fclose(fid);
 
 
 %% plot nominal dvh and write qi table
