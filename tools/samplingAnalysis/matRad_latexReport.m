@@ -163,11 +163,11 @@ fclose(fid);
 for plane=1:3
     switch plane 
         case 1
-            slice = round(pln.isoCenter(1,plane) / ct.resolution.x,0);
+            slice = round(pln.isoCenter(1,2) / ct.resolution.x,0);
         case 2
-            slice = round(pln.isoCenter(1,plane) / ct.resolution.y,0);
+            slice = round(pln.isoCenter(1,1) / ct.resolution.y,0);
         case 3
-            slice = round(pln.isoCenter(1,plane) / ct.resolution.z,0);
+            slice = round(pln.isoCenter(1,3) / ct.resolution.z,0);
     end
     colors = colorcube(size(cst,1));
     for cubesToPlot = 1:3
