@@ -27,6 +27,10 @@ switch method
             SIGMA = SIGMA + eye(size(SIGMA))*max(SIGMA(:))*10^(startMag+addMag);
             [SIGMAcol,p] = chol(SIGMA);
             addMag = addMag+1;
+            if addMag >= 10
+                error('Covariance matrix could not be fixed by adding insignificant values to diagonal.');
+                break
+            end
         end
         
         samples = arrayfun(@(f) mu + SIGMAcol' * samples(:,f),1:nFrames,'UniformOutput',false);
