@@ -67,7 +67,7 @@ dij.numOfRaysPerBeam   = [stf(:).numOfRays];
 dij.totalNumOfBixels   = sum([stf(:).totalNumOfBixels]);
 dij.totalNumOfRays     = sum(dij.numOfRaysPerBeam);
 
-if calcDoseDirect 
+if param.calcDoseDirect 
     numOfColumnsDij           = length(stf);
     numOfBixelsContainer = 1;
 else
@@ -76,9 +76,9 @@ else
 end
 
 % set up arrays for book keeping
-dij.bixelNum = NaN*ones(dij.totalNumOfRays,1);
-dij.rayNum   = NaN*ones(dij.totalNumOfRays,1);
-dij.beamNum  = NaN*ones(dij.totalNumOfRays,1);
+dij.bixelNum = NaN*ones(numOfColumnsDij,1);
+dij.rayNum   = NaN*ones(numOfColumnsDij,1);
+dij.beamNum  = NaN*ones(numOfColumnsDij,1);
 
 % Allocate space for dij.physicalDose sparse matrix
 for CtScen = 1:pln.multScen.numOfCtScen
