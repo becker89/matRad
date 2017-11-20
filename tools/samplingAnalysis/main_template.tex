@@ -26,6 +26,7 @@
 \usepackage[utf8]{inputenc}
 \usepackage{amsmath}
 \usepackage{graphicx}
+\usepackage[autoplay,loop]{animate}
 \usepackage[verbose]{placeins}
 \usepackage{fullpage}
 \usepackage{caption}
@@ -43,8 +44,10 @@
 \usepackage{grffile}
 \usepackage{amsmath}
 \usepackage{booktabs}
-%\usepackage{float}
+\usepackage{color}
+\usepackage{fancyhdr}
 \usepackage{footnote}
+\usepackage[hidelinks]{hyperref} % clickable table of content
 \makesavenoteenv{figure}
 
 \usetikzlibrary{external}
@@ -59,14 +62,20 @@
 
 
 \begin{document}
+\input{data/parameters.tex}
 \input{data/patientInformation.tex}
 
 \title{Uncertainty Sampling Report}
-\subtitle{\patientLastName{}, \patientFirstName{}, \patientID}
+\subtitle{\patientLastName{}, \patientFirstName{}, \patientID\\ \textcolor{red}{\warnMessage}}
 \author{\operator}
 % \date{\today}
 \maketitle
+\begin{figure}[!b]
+  \centering
+  \animategraphics[controls,width = \textwidth]{\framerate}{data/frames/anim_}{\firstframe}{\lastframe}
+\end{figure}
 
+\newpage
 \tableofcontents
 
 \newpage
@@ -78,9 +87,11 @@
 %\caption{My caption}
 \label{table:patientInformation}
 \begin{tabular}{rl}
+\toprule
 Patient's name & \patientLastName{}, \patientFirstName \\
 Patient ID     & \patientID                             \\
-Patient's sex  & \patientSex
+Patient's sex  & \patientSex \\
+\bottomrule
 \end{tabular}
 \end{table}
 
@@ -94,23 +105,47 @@ Patient's sex  & \patientSex
   %\caption{My caption}
   \label{table:planInformation}
   \begin{tabular}{rl}
+    \toprule
     Gantry angles   & \planGantryAngles \\
     Couch angles    & \planCouchAngles  \\
-    Radiation modalitiy & \planRadiationModality
+    Radiation modalitiy & \planRadiationModality \\
+    \bottomrule
   \end{tabular}
 \end{table}
 
 \subsection{Parameter for Uncertainty Analysis}
 \input{data/uncertaintyParameters.tex}
+The following parameters were used as scenarios, set by the user \operator.
+\begin{table}[!h]
+  \centering
+  %\caption{My caption}
+  \label{table:userParameters}
+  \begin{tabular}{rl}
+    \toprule
+    Number of shifts       & \numOfShiftScen \\
+    Shift size             & \shiftSize  \\
+    Shift combination     & \shiftCombType  \\
+    Shift isotropy         & \shiftGenIsotropy  \\
+    Number of range shifts & \numOfRangeShiftScen \\
+    Max abs. range Shift   & \maxAbsRangeShift  \\
+    Max rel. range Shift   & \maxRelRangeShift  \\
+    Range shift combination & \rangeCombType  \\
+    Total Scen combination & \scenCombType  \\
+    \bottomrule
+  \end{tabular}
+\end{table}
+
 The following uncertainties were incorporated in this analysis.
 \begin{table}[!h]
   \centering
   %\caption{My caption}
   \label{table:typeUncertainty}
   \begin{tabular}{rl}
+    \toprule
     Ct uncertainties   & \ctScen \\
     Shift uncertainties    & \shiftScen  \\
-    Range uncertainties & \rangeScen
+    Range uncertainties & \rangeScen \\
+    \bottomrule
   \end{tabular}
 \end{table}
 
@@ -120,9 +155,11 @@ Assuming the uncertainties above to be distributed by a normally around 0 with s
   %\caption{My caption}
   \label{table:uncertaintySD}
   \begin{tabular}{rl}
+    \toprule
     $\sigma_{shift} $    & \shiftSD  \ mm\\
     $\sigma_{relRange} $ & \rangeRelSD \ \% \\
     $\sigma_{absRange} $ & \rangeAbsSD \ mm \\
+    \bottomrule
   \end{tabular}
 \end{table}
 
@@ -149,6 +186,18 @@ Therefore the probability assigned to a scenario $i$ is the product of the proba
 	\sigma^2 = \frac{\sum\limits_{i} p_{i}\left(x_{i}-\mu\right)^{2}}{\sum\limits _{i}p_{i}}
 \end{equation}
 
+\subsubsection{Parameters}
+The complete explaination of parameters can be found next to the usage in every \textit{setupStudy.m}.
+\paragraph{shiftGenIsotropy} is set by default to \textit{+-}, which means that shifts go from negative to positive direction.
+One can also choose to only use positive or negative shifts.
+\paragraph{Combination Type} is a paremeter which is used for shift scenarios, range scenarios and the total combination of both (i.e. shiftCombType, rangeCombType, scenCombType).
+It can be set to \textit{individual}, where one type is computed after the other, \textit{combined} combines both types directly and \textit{permuted} is only available for shifts, where every possible permutation of the given x-, y- and z-shifts is being sampled.
+
+
+
+
+
+
 \FloatBarrier
 \newpage
 
@@ -162,14 +211,14 @@ Therefore the probability assigned to a scenario $i$ is the product of the proba
 
 \begin{figure}[!b]
   \centering
-  \input{data/isoSlicePlane1_meanW.tex}
-  \caption{CT and mean dose at isocentre. Coronal view.}
+  \input{data/isoSlicePlane1_stdW.tex}
+  \caption{CT and standard deviation of dose at isocentre. Coronal view.}
 \end{figure}
 
 \begin{figure}[!b]
   \centering
-  \input{data/isoSlicePlane1_stdW.tex}
-  \caption{CT and standard deviation of dose at isocentre. Coronal view.}
+  \input{data/isoSlicePlane1_gamma.tex}
+  \caption{CT and $\gamma$ index of nominal and mean dose (2\%, 2mm, global). Coronal view.}
 \end{figure}
 
 \begin{figure}[!b]
@@ -180,14 +229,14 @@ Therefore the probability assigned to a scenario $i$ is the product of the proba
 
 \begin{figure}[!b]
   \centering
-  \input{data/isoSlicePlane2_meanW.tex}
-  \caption{CT and mean dose at isocentre. Coronal view.}
+  \input{data/isoSlicePlane2_stdW.tex}
+  \caption{CT and standard deviation of dose at isocentre. Saggital view.}
 \end{figure}
 
 \begin{figure}[!b]
   \centering
-  \input{data/isoSlicePlane2_stdW.tex}
-  \caption{CT and standard deviation of dose at isocentre. Coronal view.}
+  \input{data/isoSlicePlane2_gamma.tex}
+  \caption{CT and $\gamma$ index of nominal and mean dose (2\%, 2mm, global). Saggital view.}
 \end{figure}
 
 \begin{figure}[!b]
@@ -198,15 +247,16 @@ Therefore the probability assigned to a scenario $i$ is the product of the proba
 
 \begin{figure}[!b]
   \centering
-  \input{data/isoSlicePlane3_meanW.tex}
-  \caption{CT and mean dose at isocentre. Coronal view.}
+  \input{data/isoSlicePlane3_stdW.tex}
+  \caption{CT and standard deviation of dose at isocentre. Axial view.}
 \end{figure}
 
 \begin{figure}[!b]
   \centering
-  \input{data/isoSlicePlane3_stdW.tex}
-  \caption{CT and standard deviation of dose at isocentre. Coronal view.}
+  \input{data/isoSlicePlane3_gamma.tex}
+  \caption{CT and $\gamma$ index of nominal and mean dose (2\%, 2mm, global). Axial view.}
 \end{figure}
+
 
 \FloatBarrier
 

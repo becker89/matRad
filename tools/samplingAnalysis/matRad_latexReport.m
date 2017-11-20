@@ -1,4 +1,4 @@
-function matRad_latexReport(ct, cst, pln, nominalScenario, structureStat, doseStat, resultGUI, param)
+function param = matRad_latexReport(ct, cst, pln, nominalScenario, structureStat, doseStat, mRealizations, resultGUI, param)
 % %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 % matRad uncertainty analysis report generaator function
 % 
@@ -60,8 +60,14 @@ for i = 1:size(cst,1)
     end
 end
 
-
 %% insert standard patient information
+% issue warning for insufficient number of scenarios
+if exist('param','var') && isfield(param,'sufficientStatistics') && ~param.sufficientStatistics
+    warnMessage = 'Insufficient statistics. Handle with care.';
+else
+    warnMessage = '';
+end
+
 try
     % import patient information
     patientInformation.firstName = ct.dicomInfo.PatientName.GivenName;
@@ -81,6 +87,7 @@ planInformation.couchAngles = num2str(pln.couchAngles);
 planInformation.modality = pln.radiationMode;
 
 line = cell(0);
+line =  [line; '\newcommand{\warnMessage}{',warnMessage,'}'];
 line =  [line; '\newcommand{\patientFirstName}{',patientInformation.firstName,'}'];
 line =  [line; '\newcommand{\patientLastName}{',patientInformation.lastName,'}'];
 line =  [line; '\newcommand{\patientSex}{',patientInformation.sex,'}'];
@@ -95,6 +102,56 @@ line =  [line; '\newcommand{\planRadiationModality}{',planInformation.modality,'
 
 fid = fopen(fullfile(outputPath,'patientInformation.tex'),'w');
 for i = 1:numel(line)
+    text = regexprep(line{i},{'\','_'},{'\\\','-'});
+    fprintf(fid,text);
+    fprintf(fid,'\n');
+end
+fclose(fid);
+
+%% analysis parameters
+line = cell(0);
+
+% raw input
+multScen = pln.multScen;
+% shift parameters
+line =  [line; '\newcommand{\numOfShiftScen}{', num2str(multScen.numOfShiftScen), '}'];
+line =  [line; '\newcommand{\shiftSize}{', num2str(max(multScen.isoShift)), '}'];
+% line =  [line; '\newcommand{\shiftGenType}{', num2str(multScen.shiftGenType), '}'];
+line =  [line; '\newcommand{\shiftCombType}{', num2str(multScen.shiftCombType), '}'];
+line =  [line; '\newcommand{\shiftGenIsotropy}{', num2str(multScen.shiftGen1DIsotropy), '}'];
+
+% range parameters
+line =  [line; '\newcommand{\numOfRangeShiftScen}{', num2str(multScen.numOfRangeShiftScen), '}'];
+line =  [line; '\newcommand{\maxAbsRangeShift}{', num2str(max(multScen.absRangeShift)), '}'];
+line =  [line; '\newcommand{\maxRelRangeShift}{', num2str(max(multScen.relRangeShift)), '}'];
+line =  [line; '\newcommand{\rangeCombType}{', num2str(multScen.rangeCombType), '}'];
+% line =  [line; '\newcommand{\rangeGenType}{', num2str(multScen.rangeGenType), '}'];
+line =  [line; '\newcommand{\scenCombType}{', num2str(multScen.scenCombType), '}'];
+
+if pln.multScen.numOfCtScen <= 1
+    line =  [line; '\newcommand{\ctScen}{false}'];
+else
+    line =  [line; '\newcommand{\ctScen}{true}'];
+end
+
+if pln.multScen.numOfRangeShiftScen <= 1
+    line =  [line; '\newcommand{\rangeScen}{false}'];
+else
+    line =  [line; '\newcommand{\rangeScen}{true}'];
+end
+
+if pln.multScen.numOfShiftScen <= 1
+    line =  [line; '\newcommand{\shiftScen}{false}'];
+else
+    line =  [line; '\newcommand{\shiftScen}{true}'];
+end
+
+line =  [line; '\newcommand{\shiftSD}{', num2str(pln.multScen.shiftSD), '}'];
+line =  [line; '\newcommand{\rangeAbsSD}{', num2str(pln.multScen.rangeAbsSD), '}'];
+line =  [line; '\newcommand{\rangeRelSD}{', num2str(pln.multScen.rangeRelSD), '}'];
+
+fid = fopen(fullfile(outputPath,'uncertaintyParameters.tex'),'w');
+for i = 1:numel(line)
     text = regexprep(line{i},'\','\\\');
     fprintf(fid,text);
     fprintf(fid,'\n');
@@ -106,38 +163,74 @@ fclose(fid);
 for plane=1:3
     switch plane 
         case 1
-            slice = round(pln.isoCenter(1,plane) / ct.resolution.x,0);
+            slice = round(pln.isoCenter(1,2) / ct.resolution.x,0);
         case 2
-            slice = round(pln.isoCenter(1,plane) / ct.resolution.y,0);
+            slice = round(pln.isoCenter(1,1) / ct.resolution.y,0);
         case 3
-            slice = round(pln.isoCenter(1,plane) / ct.resolution.z,0);
+            slice = round(pln.isoCenter(1,3) / ct.resolution.z,0);
     end
     colors = colorcube(size(cst,1));
     for cubesToPlot = 1:3
+        figure; ax = gca;
         if cubesToPlot == 1
-            if isfield(resultGUI,'RBExDose')
-                doseCube = resultGUI.RBExDose;
+            if isfield(nominalScenario,'RBExDose')
+                doseCube = nominalScenario.RBExDose;
                 colorMapLabel = 'physical Dose [Gy]';
             else
-                doseCube = resultGUI.physicalDose;
+                doseCube = nominalScenario.physicalDose;
                 colorMapLabel = 'RBExDose [Gy(RBE)]';
             end
             fileSuffix = 'nominal';
+            matRad_plotSliceWrapper(ax,ct,cst,1,doseCube,plane,slice,[],[],colors,[],colorMapLabel);
         elseif cubesToPlot == 2
-            doseCube = doseStat.meanCubeW;
-            fileSuffix = 'meanW';
+            doseCube = doseStat.gammaAnalysis.gammaCube;
+            colorMapLabel = 'gamma index';
+            fileSuffix = 'gamma';
+            gammaColormap = matRad_getColormap('gammaIndex');
+            matRad_plotSliceWrapper(ax,ct,cst,1,doseCube,plane,slice,[],[],colors,gammaColormap,colorMapLabel,[0 2]);
         elseif cubesToPlot == 3
+            if isfield(nominalScenario,'RBExDose')
+                doseCube = nominalScenario.RBExDose;
+                colorMapLabel = 'sigma: physical Dose [Gy]';
+            else
+                doseCube = nominalScenario.physicalDose;
+                colorMapLabel = 'sigma: RBExDose [Gy(RBE)]';
+            end
             doseCube = doseStat.stdCubeW;
             fileSuffix = 'stdW';
+            matRad_plotSliceWrapper(ax,ct,cst,1,doseCube,plane,slice,[],[],colors,[],colorMapLabel);
         end
-        figure; ax = gca;
-        matRad_plotSliceWrapper(ax,ct,cst,1,doseCube,plane,slice,[],[],colors,[],colorMapLabel);
         drawnow();
         cleanfigure();          
         matlab2tikz(fullfile(outputPath,['isoSlicePlane', num2str(plane), '_', fileSuffix, '.tex']), 'relativeDataPath', 'data', 'showInfo', false, 'width', '\figW');
         close
     end
 end
+
+%% fancy animation
+param.confidenceValue = 0.9;
+
+slice = round(pln.isoCenter(1,plane) / ct.resolution.z,0);            
+outPath = fullfile(outputPath, 'frames');
+if isfield(nominalScenario,'RBExDose')
+    legendColorbar = 'physical Dose [Gy]';
+else
+    legendColorbar = 'RBExDose [Gy(RBE)]';
+end
+matRad_createAnimationForLatexReport(param.confidenceValue, ct, cst, slice, doseStat.meanCubeW, mRealizations, pln.multScen.scenProb, pln.multScen.subIx, outPath, legendColorbar);
+
+line = cell(0);
+line =  [line; '\newcommand{\framerate}{24}'];
+line =  [line; '\newcommand{\firstframe}{1}'];
+line =  [line; '\newcommand{\lastframe}{120}'];
+
+fid = fopen(fullfile(outputPath,'parameters.tex'),'w');
+for i = 1:numel(line)
+    text = regexprep(line{i},{'\','_'},{'\\\','-'});
+    fprintf(fid,text);
+    fprintf(fid,'\n');
+end
+fclose(fid);
 
 
 %% plot nominal dvh and write qi table
@@ -189,9 +282,9 @@ end
 
 nomQiTable = struct2table(nomQi);
 fullNomQiTable = struct2table(fullQi);
-fullNomQiTable = fullNomQiTable(:,1:8);
+fullNomQiTable = fullNomQiTable(:,1:9);
 nomQiTable.Properties.RowNames = structName;
-input.data = nomQiTable(:,1:8);
+input.data = nomQiTable(:,1:9);
 input.dataFormat = {'%.2f'};
 input.booktabs = 1;
 input.tableBorders = 0;
@@ -209,49 +302,6 @@ end
 fclose(fid);
 clear latex
 clear input
-
-
-%% analysis parameters
-line = cell(0);
-if pln.multScen.numOfCtScen <= 1
-    line =  [line; '\newcommand{\ctScen}{false}'];
-else
-    line =  [line; '\newcommand{\ctScen}{true}'];
-end
-
-if pln.multScen.numOfRangeShiftScen <= 1
-    line =  [line; '\newcommand{\rangeScen}{false}'];
-    line =  [line; '\newcommand{\rangeRelSD}{', num2str(0), '}'];
-    line =  [line; '\newcommand{\rangeAbsSD}{', num2str(0), '}'];
-else
-    line =  [line; '\newcommand{\rangeScen}{true}'];
-    if isempty(pln.multScen.relRangeShift) || ((max(pln.multScen.relRangeShift) == 0) && (min(pln.multScen.relRangeShift) == 0))
-        line =  [line; '\newcommand{\rangeRelSD}{', num2str(0), '}'];
-    else
-        line =  [line; '\newcommand{\rangeRelSD}{', num2str(pln.multScen.rangeRelSD), '}'];
-    end
-    if isempty(pln.multScen.relRangeShift) || ((max(pln.multScen.absRangeShift) == 0 && min(pln.multScen.absRangeShift) == 0))
-        line =  [line; '\newcommand{\rangeAbsSD}{', num2str(0), '}'];
-    else
-        line =  [line; '\newcommand{\rangeAbsSD}{', num2str(pln.multScen.rangeAbsSD), '}'];
-    end
-end
-
-if pln.multScen.numOfShiftScen <= 1
-    line =  [line; '\newcommand{\shiftScen}{false}'];
-    line =  [line; '\newcommand{\shiftSD}{', num2str([0 0 0]), '}'];
-else
-    line =  [line; '\newcommand{\shiftScen}{true}'];
-    line =  [line; '\newcommand{\shiftSD}{', num2str(pln.multScen.shiftSD), '}'];
-end
-
-fid = fopen(fullfile(outputPath,'uncertaintyParameters.tex'),'w');
-for i = 1:numel(line)
-    text = regexprep(line{i},'\','\\\');
-    fprintf(fid,text);
-    fprintf(fid,'\n');
-end
-fclose(fid);
 
 
 %% add DVH and QI
@@ -318,8 +368,8 @@ for i = 1:size(cst,1)
 
         % QI
         fprintf([num2str(i),'\n']);
-        qiTable = fullNomQiTable(i,1:8);
-        qiTable = [qiTable; structureStat(i).qiStat(:,1:8)];
+        qiTable = fullNomQiTable(i,1:9);
+        qiTable = [qiTable; structureStat(i).qiStat(:,1:9)];
         qiTable.Properties.RowNames{1} = 'nominal';
         input.data = qiTable;
         input.dataFormat = {'%.2f'};

@@ -39,8 +39,9 @@ else
 end
 
 % require minimum number of scenarios to ensure proper statistics
-if multScen.numOfRangeShiftScen + sum(multScen.numOfShiftScen) < 12
-    warning('You use a very low number of scenarios. Proceeding is not recommended.');
+if multScen.numOfRangeShiftScen + sum(multScen.numOfShiftScen) < 20
+    matRad_dispToConsole('You use a very low number of scenarios. Proceeding is not recommended.',param,'warning');
+    param.sufficientStatistics = false;
     pause(10);
 end
 
@@ -69,22 +70,23 @@ pln.sampling = true;
 [mRealizations, cst, pln, nominalScenario]  = matRad_sampling(ct,stf,cst,pln,resultGUI.w,examineStructures, multScen, param);
 
 %% perform analysis
-[structureStat, doseStat] = matRad_samplingAnalysis(ct,cst,pln.multScen.subIx,mRealizations,pln.multScen.scenProb);
+[structureStat, doseStat, param] = matRad_samplingAnalysis(ct,cst,pln.multScen.subIx,mRealizations,pln.multScen.scenProb,nominalScenario, pln.multScen, param);
 
 %% save
 param.reportPath = fullfile('report','data');
 filename = 'resultSampling';
-save(filename);
+save(filename, '-v7.3');
 
 %% generate report
 
 cd(param.outputPath)
 mkdir(fullfile('report','data'));
+mkdir(fullfile('report','data','frames'));
 mkdir(fullfile('report','data','figures'));
 copyfile(fullfile(matRadPath,'tools','samplingAnalysis','main_template.tex'),fullfile('report','main.tex'));
 
 % generate actual latex report
-matRad_latexReport(ct, cst, pln, nominalScenario, structureStat, doseStat, resultGUI, param);
+matRad_latexReport(ct, cst, pln, nominalScenario, structureStat, doseStat, mRealizations, resultGUI, param);
 
 cd('report');
 if ispc

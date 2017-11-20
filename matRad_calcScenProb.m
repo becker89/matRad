@@ -43,7 +43,7 @@ if isequal(probDist,'normDist')
         
         for i = 1:length(mu)
             samplePosSorted = sort(unique(samplePos(:,i)));
-            if numel(samplePosSorted) == 1
+            if numel(samplePosSorted) == 1 || sigma(i) == 0
                 continue;
             end
             binWidth        = (samplePosSorted(2) - samplePosSorted(1));

@@ -45,26 +45,29 @@ function [hCMap,hDose,hCt,hContour,hIsoDose] = matRad_plotSliceWrapper(axesHandl
 % %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
 %Handle the argument list
-if ~exist('tresh','var')
+if ~exist('tresh','var') || isempty(thresh)
     thresh = [];
 end
-if ~exist('alpha','var')
+if ~exist('alpha','var') || isempty(alpha)
     alpha = [];
 end
-if ~exist('contourColorMap','var')
+if ~exist('contourColorMap','var') || isempty(contourColorMap)
    contourColorMap = [];
 end
-if ~exist('doseColorMap','var')
+if ~exist('doseColorMap','var') || isempty(doseColorMap)
    doseColorMap = [];
 end
-if ~exist('doseWindow','var')
+if ~exist('doseWindow','var') || isempty(doseWindow)
    doseWindow = [];
 end
-if ~exist('doseIsoLevels','var')
+if ~exist('doseIsoLevels','var') || isempty(doseIsoLevels)
    doseIsoLevels = [];
 end
-if ~exist('colorMapLabel','var')
+if ~exist('colorMapLabel','var') || isempty(colorMapLabel)
    colorMapLabel = '';
+end
+if ~exist('disableInterpretor','var') || isempty(disableInterpretor)
+    disableInterpretor = true;
 end
 
 
@@ -72,7 +75,7 @@ set(axesHandle,'YDir','Reverse');
 hCt = matRad_plotCtSlice(axesHandle,ct.cube,cubeIdx,plane,slice); 
 hold on;
 
-hContour = matRad_plotVoiContourSlice(axesHandle,cst,ct,cubeIdx,[],plane,slice,contourColorMap);
+hContour = matRad_plotVoiContourSlice(axesHandle,cst,ct.cube,cubeIdx,[],plane,slice,contourColorMap);
 [hDose,doseColorMap,doseWindow] = matRad_plotDoseSlice(axesHandle,dose,plane,slice,thresh,alpha,doseColorMap,doseWindow);
 if ~isempty(doseIsoLevels)
     hIsoDose = matRad_plotIsoDoseLines(axesHandle,dose,[],doseIsoLevels,false,plane,slice,doseColorMap,doseWindow);
@@ -84,7 +87,4 @@ set(axesHandle,'xtick',[],'ytick',[]);
 daspect(axesHandle,[1 1 1]);
 colormap(doseColorMap);
 hCMap = matRad_plotColorbar(axesHandle,doseColorMap,doseWindow,'Location','EastOutside');
-set(get(hCMap,'ylabel'),'String', colorMapLabel,'fontsize',8);
-set(get(hCMap,'ylabel'),'interpreter','none');
 end
-

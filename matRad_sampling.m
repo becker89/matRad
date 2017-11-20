@@ -122,7 +122,7 @@ fprintf('Finished nominal Scenario Calculation.\n');
 nominalScenario.cst = cst;
 nominalScenario.dvh = matRad_calcDVH(cst,nominalScenario.(pln.bioParam.quantityOpt),'cum');
 
-refVol = [2 5 95 98];
+refVol = [2 5 50 95 98];
 refGy = linspace(0,max(nominalScenario.(pln.bioParam.quantityOpt)(:)),6);
 nomQi = matRad_calcQualityIndicators(cst,pln,nominalScenario.(pln.bioParam.quantityOpt),refGy,refVol,param);
 nominalScenario.qi = nomQi;
