@@ -299,7 +299,11 @@ if visBool
     legend({'original IDD',['cut off IDD at ' num2str(cutOffLevel) '%'],'cut off IDD with compensation'},'Location','northwest'),
     xlabel('z [mm]'),ylabel('[MeV cm^2 /(g * primary)]'),set(gca,'FontSize',12)     
            
-    totEnergy        = trapz(machine.data(energyIx).depths,machine.data(energyIx).Z*conversionFactor) ;
+    if isstruct(entry.Z)
+        totEnergy        = trapz(machine.data(energyIx).depths,machine.data(energyIx).Z.doseAPM*conversionFactor) ;
+    else
+        totEnergy        = trapz(machine.data(energyIx).depths,machine.data(energyIx).Z*conversionFactor) ;
+    end
     totEnergyCutOff  = trapz(radDepths,vDoseInt * TmpCompFac) ;
     relDiff          =  ((totEnergy/totEnergyCutOff)-1)*100;   
     title(['rel diff of integral dose ' num2str(relDiff) '%']);
