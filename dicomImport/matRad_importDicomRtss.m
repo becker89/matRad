@@ -21,29 +21,16 @@ function structures = matRad_importDicomRtss(filename,dicomInfo,visBool)
 %
 % %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
-
-
 % %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %
-% Copyright 2015, Mark Bangert, on behalf of the matRad development team
-%
-% m.bangert@dkfz.de
-%
-% This file is part of matRad.
-%
-% matrad is free software: you can redistribute it and/or modify it under 
-% the terms of the GNU General Public License as published by the Free 
-% Software Foundation, either version 3 of the License, or (at your option)
-% any later version.
-%
-% matRad is distributed in the hope that it will be useful, but WITHOUT ANY
-% WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS
-% FOR A PARTICULAR PURPOSE. See the GNU General Public License for more
-% details.
-%
-% You should have received a copy of the GNU General Public License in the
-% file license.txt along with matRad. If not, see
-% <http://www.gnu.org/licenses/>.
+% Copyright 2015 the matRad development team. 
+% 
+% This file is part of the matRad project. It is subject to the license 
+% terms in the LICENSE file found in the top-level directory of this 
+% distribution and at https://github.com/e0404/matRad/LICENSES.txt. No part 
+% of the matRad project, including this file, may be copied, modified, 
+% propagated, or distributed except according to the terms contained in the 
+% LICENSE file.
 %
 % %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
@@ -53,8 +40,13 @@ if nargin < 3
     visBool = 0;
 end
 
-%% get info
-structInfo = dicominfo(filename);
+% read dicom info (this includes already all data for the rtss)
+if verLessThan('matlab','9')
+    structInfo = dicominfo(filename);
+else % apply 'UseVRHeuristic' option when available to use a to help read certain 
+     % noncompliant files which switch value representation (VR) modes incorrectly
+    structInfo = dicominfo(filename,'UseVRHeuristic',false,'UseDictionaryVR',true);
+end
 
 % list the defined structures
 listOfDefStructs = fieldnames(structInfo.StructureSetROISequence);
@@ -62,19 +54,28 @@ listOfDefStructs = fieldnames(structInfo.StructureSetROISequence);
 listOfContStructs = fieldnames(structInfo.ROIContourSequence);
 
 %% process structure data
-% numOfDefStructs = numel(listOfDefStructs);
+numOfDefStructs  = numel(listOfDefStructs);
 numOfContStructs = numel(listOfContStructs);
 
 for i = 1:numOfContStructs % loop over every structure   
 
-% Is This enough?
+    % find the correct name
+    for j = 1:numOfDefStructs
+        if structInfo.ROIContourSequence.(listOfContStructs{i}).ReferencedROINumber ...
+                == structInfo.StructureSetROISequence.(listOfDefStructs{j}).ROINumber
+            break;
+        end
+    end    
     structures(i).structName   = structInfo.StructureSetROISequence.(...
-                                 listOfDefStructs{i}).ROIName;                               
+                                 listOfDefStructs{j}).ROIName;
+                             
     structures(i).structNumber = structInfo.ROIContourSequence.(...
                                  listOfContStructs{i}).ReferencedROINumber;
-    structures(i).structColor  = structInfo.ROIContourSequence.(...
-                                 listOfContStructs{i}).ROIDisplayColor;  
-                             
+    if isfield(structInfo.ROIContourSequence.(listOfContStructs{i}),'ROIDisplayColor')
+        structures(i).structColor  = structInfo.ROIContourSequence.(...
+                                     listOfContStructs{i}).ROIDisplayColor;  
+    end
+
     if isfield(structInfo.ROIContourSequence.(...
                     listOfContStructs{i}), 'ContourSequence');
                 if ~isempty(structInfo.ROIContourSequence.(...
@@ -102,6 +103,10 @@ for i = 1:numOfContStructs % loop over every structure
         structX = structSlice.ContourData([1:3:end 1]);
         structY = structSlice.ContourData([2:3:end 2]);
         structZ = structSlice.ContourData([3:3:end 3]);
+        
+        % rounding to solve numerical problems with contour points not
+        % being defined exactly in the same slice
+        structZ = 1e-10*round(1e10*structZ);
         
         % sanity check 1
         if numel(unique(structZ)) > 1

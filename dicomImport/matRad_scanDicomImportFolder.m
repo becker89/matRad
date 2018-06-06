@@ -18,30 +18,24 @@ function [ fileList, patientList ] = matRad_scanDicomImportFolder( patDir )
 %
 % %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
+% %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%
+% Copyright 2015 the matRad development team. 
+% 
+% This file is part of the matRad project. It is subject to the license 
+% terms in the LICENSE file found in the top-level directory of this 
+% distribution and at https://github.com/e0404/matRad/LICENSES.txt. No part 
+% of the matRad project, including this file, may be copied, modified, 
+% propagated, or distributed except according to the terms contained in the 
+% LICENSE file.
+%
+% %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%% print current status of the import script
+fprintf('Dose series matched to the different plans are displayed and could be selected.\n');
+fprintf('Rechecking of correct matching procedure is recommended.\n');
 
-% %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-%
-% Copyright 2015, Mark Bangert, on behalf of the matRad development team
-%
-% m.bangert@dkfz.de
-%
-% This file is part of matRad.
-%
-% matrad is free software: you can redistribute it and/or modify it under 
-% the terms of the GNU General Public License as published by the Free 
-% Software Foundation, either version 3 of the License, or (at your option)
-% any later version.
-%
-% matRad is distributed in the hope that it will be useful, but WITHOUT ANY
-% WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS
-% FOR A PARTICULAR PURPOSE. See the GNU General Public License for more
-% details.
-%
-% You should have received a copy of the GNU General Public License in the
-% file license.txt along with matRad. If not, see
-% <http://www.gnu.org/licenses/>.
-%
-% %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+global warnDlgDICOMtagShown;
+warnDlgDICOMtagShown = false;
 
 %% get all files in search directory
 
@@ -50,19 +44,9 @@ if ~license('checkout','image_toolbox')
     error('image processing toolbox and/or corresponding licence not available');
 end
 
-% get information about main directory
-mainDirInfo = dir(patDir);
-% get index of subfolders
-dirIndex = [mainDirInfo.isdir];
-% list of filenames in main directory
-fileList = {mainDirInfo(~dirIndex).name}';
-patientList = 0;
+fileList = matRad_listAllFiles(patDir);
 
-% create full path for all files in main directory
 if ~isempty(fileList)
-    fileList = cellfun(@(x) fullfile(patDir,x),...
-        fileList, 'UniformOutput', false);
-    
     %% check for dicom files and differentiate patients, types, and series
     numOfFiles = numel(fileList(:,1));
     h = waitbar(0,'Please wait...');
@@ -71,9 +55,14 @@ if ~isempty(fileList)
     for i = numOfFiles:-1:1
         waitbar((numOfFiles+1-i) / steps)
         try % try to get DicomInfo
-            info = dicominfo(fileList{i});
+            if verLessThan('matlab','9')
+                info = dicominfo(fileList{i});
+            else
+                info = dicominfo(fileList{i},'UseDictionaryVR',true);
+            end
         catch
             fileList(i,:) = [];
+            matRad_progress(numOfFiles+1-i, numOfFiles);
             continue;
         end
         try
@@ -81,36 +70,29 @@ if ~isempty(fileList)
         catch
             fileList{i,2} = NaN;
         end
-        try
-            fileList{i,3} = info.PatientID;
-        catch
-            fileList{i,3} = NaN;
+        
+        fileList = parseDicomTag(fileList,info,'PatientID',i,3);
+        
+        switch fileList{i,2}
+            case 'CT'
+               
+               fileList = parseDicomTag(fileList,info,'SeriesInstanceUID',i,4);
+                
+            case {'RTPLAN','RTDOSE','RTSTRUCT'}
+               
+               fileList = parseDicomTag(fileList,info,'SOPInstanceUID',i,4);
+
+           otherwise
+               
+              fileList = parseDicomTag(fileList,info,'SeriesInstanceUID',i,4);
+
         end
-        try
-            fileList{i,4} = info.SeriesInstanceUID;
-        catch
-            fileList{i,4} = NaN;
-        end
-        try
-            fileList{i,5} = num2str(info.SeriesNumber);
-        catch
-            fileList{i,5} = NaN;
-        end
-        try
-            fileList{i,6} = info.PatientName.FamilyName;
-        catch
-            fileList{i,6} = NaN;
-        end
-        try
-            fileList{i,7} = info.PatientName.GivenName;
-        catch
-            fileList{i,7} = NaN;
-        end
-        try
-            fileList{i,8} = info.PatientBirthDate;
-        catch
-            fileList{i,8} = NaN;
-        end
+        
+        fileList = parseDicomTag(fileList,info,'SeriesNumber',i,5);
+        fileList = parseDicomTag(fileList,info,'FamilyName',i,6);
+        fileList = parseDicomTag(fileList,info,'GivenName',i,7);
+        fileList = parseDicomTag(fileList,info,'PatientBirthDate',i,8);
+
         try
             if strcmp(info.Modality,'CT')
                 fileList{i,9} = num2str(info.PixelSpacing(1));
@@ -138,7 +120,34 @@ if ~isempty(fileList)
         catch
             fileList{i,11} = NaN;
         end
-        
+        try
+            if strcmp(info.Modality,'RTDOSE')
+                dosetext_helper = strcat('Instance','_', num2str(info.InstanceNumber),'_', ...
+                    info.DoseSummationType, '_', info.DoseType);
+                fileList{i,12} = dosetext_helper;
+            else
+                fileList{i,12} = NaN;
+            end
+        catch
+            fileList{i,12} = NaN;
+        end
+        % writing corresponding dose dist.
+        try
+            if strcmp(fileList{i,2},'RTPLAN')
+                corrDose = [];
+                numDose = length(fieldnames(info.ReferencedDoseSequence));
+                for j = 1:numDose
+                    fieldName = strcat('Item_',num2str(j));
+                    corrDose{j} = info.ReferencedDoseSequence.(fieldName).ReferencedSOPInstanceUID;
+                end
+                fileList{i,13} = corrDose;
+            else
+                fileList{i,13} = {'NaN'};
+            end
+
+        catch
+            fileList{i,13} = {'NaN'};
+        end
         matRad_progress(numOfFiles+1-i, numOfFiles);
         
     end
@@ -146,14 +155,6 @@ if ~isempty(fileList)
     
     if ~isempty(fileList)
         patientList = unique(fileList(:,3));
-        % check if there is at least one RT struct and one ct file
-        % available per patient
-        for i = numel(patientList):-1:1
-            if sum(strcmp('CT',fileList(:,2)) & strcmp(patientList{i},fileList(:,3))) < 1 || ...
-               sum(strcmp('RTSTRUCT',fileList(:,2)) & strcmp(patientList{i},fileList(:,3))) < 1
-                patientList(i) = [];
-            end
-        end
         
         if isempty(patientList)
             msgbox('No patient found with DICOM CT _and_ RT structure set in patient directory!', 'Error','error');
@@ -164,12 +165,52 @@ if ~isempty(fileList)
         %error('No DICOM files found in patient directory');
     end
 else
-    h = msgbox('Search folder empty!', 'Error','error');
-    %h.WindowStyle = 'Modal';
-    %error('Search folder empty')
+    msgbox('Search folder empty!', 'Error','error');
     
 end
 
+clear warnDlgDICOMtagShown;
 
 end
+
+function fileList = parseDicomTag(fileList,info,tag,row,column)
+
+global warnDlgDICOMtagShown;
+
+defaultPlaceHolder = '001';
+
+try
+   if isfield(info,tag)
+      if ~isempty(info.(tag))
+         fileList{row,column} = info.(tag);
+      else
+         fileList{row,column} = defaultPlaceHolder;
+      end
+   else
+      fileList{row,column} = defaultPlaceHolder;
+   end
+catch
+   fileList{row,column} = NaN;
+end
+
+if ~warnDlgDICOMtagShown && strcmp(fileList{row,column},defaultPlaceHolder) && (column == 3 || column == 4)
+ 
+   dlgTitle    = 'Dicom Tag import';
+   dlgQuestion = ['matRad_scanDicomImportFolder: Could not parse dicom tag: ' tag '. Using placeholder ' defaultPlaceHolder ' instead. Please check importet data carefully! Do you want to continue.'];
+   answer      = questdlg(dlgQuestion,dlgTitle,'Yes','No', 'Yes');
+   
+   warnDlgDICOMtagShown = true;
+   
+   switch answer
+      case 'No'
+         error('Inconsistency in DICOM tags')  
+   end
+   
+end
+
+
+end
+
+
+
 

@@ -21,25 +21,14 @@ function isoCenter = matRad_getIsoCenter(cst,ct,visBool)
 
 % %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %
-% Copyright 2015, Mark Bangert, on behalf of the matRad development team
-%
-% m.bangert@dkfz.de
-%
-% This file is part of matRad.
-%
-% matrad is free software: you can redistribute it and/or modify it under 
-% the terms of the GNU General Public License as published by the Free 
-% Software Foundation, either version 3 of the License, or (at your option)
-% any later version.
-%
-% matRad is distributed in the hope that it will be useful, but WITHOUT ANY
-% WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS
-% FOR A PARTICULAR PURPOSE. See the GNU General Public License for more
-% details.
-%
-% You should have received a copy of the GNU General Public License in the
-% file license.txt along with matRad. If not, see
-% <http://www.gnu.org/licenses/>.
+% Copyright 2015 the matRad development team. 
+% 
+% This file is part of the matRad project. It is subject to the license 
+% terms in the LICENSE file found in the top-level directory of this 
+% distribution and at https://github.com/e0404/matRad/LICENSES.txt. No part 
+% of the matRad project, including this file, may be copied, modified, 
+% propagated, or distributed except according to the terms contained in the 
+% LICENSE file.
 %
 % %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
@@ -51,10 +40,15 @@ end
 % Initializes V variable.
 V = [];
 
+%Check if any constraints/Objectives have been defined yet
+noObjOrConst = all(cellfun(@isempty,cst(:,6)));
+
 % Save target indices in V variable.
-for i=1:size(cst,1)
-    if isequal(cst{i,3},'TARGET') && ~isempty(cst{i,6})
-        V = [V;cst{i,4}];
+for i = 1:size(cst,1)
+    %We only let a target contribute if it has an objective/constraint or
+    %if we do not have specified objectives/constraints at all so far
+    if isequal(cst{i,3},'TARGET') && (~isempty(cst{i,6}) || noObjOrConst)
+        V = [V;vertcat(cst{i,4}{:})];
     end
 end
 
@@ -68,7 +62,7 @@ if isempty(V)
 end
 
 % Transform subcripts from linear indices 
-[yCoordsV, xCoordsV, zCoordsV] = ind2sub(size(ct.cube),V);
+[yCoordsV, xCoordsV, zCoordsV] = ind2sub(ct.cubeDim,V);
 
 % Transform to [mm]
 xCoordsV = xCoordsV * ct.resolution.x;

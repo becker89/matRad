@@ -1,115 +1,88 @@
-function matRad_calcDVH(result,cst,lineStyleIndicator)
+function dvh = matRad_calcDVH(cst,doseCube,dvhType,doseGrid)
 % %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 % matRad dvh calculation
 % 
 % call
-%   matRad_calcDVH(d,cst,lineStyleIndicator)
+%   dvh = matRad_calcDVH(cst,doseCube,dvhType,doseGrid)
 %
 % input
-%   result:             result struct from fluence optimization/sequencing
-%   cst:                matRad cst struct
-%   lineStyleIndicator: integer (1,2,3,4) to indicate the current linestyle
-%                       (hint: use different lineStyles to overlay
-%                       different dvhs)
+%   cst:                  matRad cst struct
+%   doseCube:             arbitrary doseCube (e.g. physicalDose)
+%   dvhType: (optional)   string, 'cum' for cumulative, 'diff' for differential
+%                         dvh
+%   doseGrid: (optional): use predefined evaluation points. Useful when
+%                         comparing multiple realizations
 %
 % output
-%   graphical display of DVH & dose statistics in console   
+%   dose volume histogram
 %
 % References
-%   -
+%   van't Riet et. al., IJROBP, 1997 Feb 1;37(3):731-6.
+%   Kataria et. al., J Med Phys. 2012 Oct-Dec; 37(4): 207�213.
 %
 % %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
 % %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %
-% Copyright 2015, Mark Bangert, on behalf of the matRad development team
-%
-% m.bangert@dkfz.de
-%
-% This file is part of matRad.
-%
-% matrad is free software: you can redistribute it and/or modify it under 
-% the terms of the GNU General Public License as published by the Free 
-% Software Foundation, either version 3 of the License, or (at your option)
-% any later version.
-%
-% matRad is distributed in the hope that it will be useful, but WITHOUT ANY
-% WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS
-% FOR A PARTICULAR PURPOSE. See the GNU General Public License for more
-% details.
-%
-% You should have received a copy of the GNU General Public License in the
-% file license.txt along with matRad. If not, see
-% <http://www.gnu.org/licenses/>.
+% Copyright 2016 the matRad development team. 
+% 
+% This file is part of the matRad project. It is subject to the license 
+% terms in the LICENSE file found in the top-level directory of this 
+% distribution and at https://github.com/e0404/matRad/LICENSES.txt. No part 
+% of the matRad project, including this file, may be copied, modified, 
+% propagated, or distributed except according to the terms contained in the 
+% LICENSE file.
 %
 % %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
-% create new figure and set default line style indicator if not explictly
-% specified
-if nargin < 3
-    figure
-    hold on
-    lineStyleIndicator = 1;
-else
-    hold on
+if ~exist('dvhType','var') || isempty(dvhType)
+    dvhType = 'cum';
+end
+
+if ~exist('doseGrid', 'var') || isempty(doseGrid)
+    maxDose = max(doseCube(:));
+    minDose = min(doseCube(:));
+
+    % get dvhPoints for every structure and every scenario the same
+    n = 1000;
+    if strcmp(dvhType, 'cum')
+        doseGrid = linspace(0,maxDose*1.05,n);
+    elseif strcmp(dvhType, 'diff')
+        doseGrid = linspace(0.95*minDose,maxDose*1.05,n);
+    end
 end
 
 numOfVois = size(cst,1);
-
-%% calculate and print the dvh
-colorMx    = colorcube;
-colorMx    = colorMx(1:floor(64/numOfVois):64,:);
-
-lineStyles = {'-',':','--','-.'};
-
-n = 1000;
-if sum(strcmp(fieldnames(result),'RBExDose')) > 0
-    dvhPoints = linspace(0,max(result.RBExDose(:))*1.05,n);
-else
-    dvhPoints = linspace(0,max(result.physicalDose(:))*1.05,n);
-end
-dvh       = NaN * ones(1,n);
-
+dvh = struct;
 for i = 1:numOfVois
-
-    indices     = cst{i,4};
-    numOfVoxels = numel(indices);
-    if sum(strcmp(fieldnames(result),'RBEWeightedDose')) > 0
-        doseInVoi   = result.RBEWeightedDose(indices);   
-    else
-        doseInVoi   = result.physicalDose(indices);
-    end
-    
-    % fprintf('%3d %20s - Mean dose = %5.2f Gy +/- %5.2f Gy (Max dose = %5.2f Gy, Min dose = %5.2f Gy)\n', ...
-    %     cst{i,1},cst{i,2},mean(doseInVoi),std(doseInVoi),max(doseInVoi),min(doseInVoi))
-
-    for j = 1:n
-        dvh(j) = sum(doseInVoi > dvhPoints(j));
-    end
-    
-    dvh = dvh ./ numOfVoxels * 100;
-
-    plot(dvhPoints,dvh,'LineWidth',4,'Color',colorMx(i,:), ...
-        'LineStyle',lineStyles{lineStyleIndicator},'DisplayName',cst{i,2});
-
+    dvh(i).doseGrid     = doseGrid;
+    dvh(i).volumePoints = getDVHPoints(cst, i, doseCube, doseGrid, dvhType);
+    dvh(i).name         = cst{i,2};
 end
 
-% legend
-legend('show');
+end %eof 
 
-fontSizeValue = 14;
+function dvh = getDVHPoints(cst, sIx, doseCube, dvhPoints, dvhType)
+n = numel(dvhPoints);
+dvh         = NaN * ones(1,n);
+indices     = cst{sIx,4}{1};
+numOfVoxels = numel(indices);
 
-ylim([0 110])
-set(gca,'YTick',0:20:120)
+doseInVoi   = doseCube(indices);
 
-grid on
-box(gca,'on');
-set(gca,'LineWidth',1.5,'FontSize',fontSizeValue);
-set(gcf,'Color','w');
-ylabel('Volume [%]','FontSize',fontSizeValue)
+switch dvhType
+    case 'cum' % cummulative DVH
+        for j = 1:n
+            dvh(j) = sum(doseInVoi >= dvhPoints(j));
+        end
 
-if sum(strcmp(fieldnames(result),'RBEWeightedDose')) > 0
-    xlabel('RBE x Dose [GyE]','FontSize',fontSizeValue)
-else
-    xlabel('Dose [Gy]','FontSize',fontSizeValue)
+    case 'diff' % differential DVH
+        binning = (dvhPoints(2) - dvhPoints(1))/2;
+        for j = 1:n % differential DVH        
+            dvh(j) = sum(dvhPoints(j) + binning > doseInVoi & doseInVoi > dvhPoints(j) - binning);
+        end
+
 end
+dvh = dvh ./ numOfVoxels * 100;
+end %eof getDVHPoints
+

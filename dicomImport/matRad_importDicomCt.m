@@ -1,14 +1,16 @@
-function ct = matRad_importDicomCt(ctList, resolution, visBool)
+function ct = matRad_importDicomCt(ctList, resolution, dicomMetaBool, grid, visBool)
 % %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 % matRad function to import dicom ct data
 % 
 % call
-%   ct = matRad_importDicomCt(ctList, resolution, visBool)
+%   ct = matRad_importDicomCt(ctList, resolution, dicomMetaBool, visBool)
 %
 % input
 %   ctList:         list of dicom ct files
 %   resolution:   	resolution of the imported ct cube, i.e. this function
 %                   will interpolate to a different resolution if desired
+%   dicomMetaBool:  store complete dicom information if true
+%   grid:           optional: a priori grid specified for interpolation
 %   visBool:        optional: turn on/off visualization
 %
 % output
@@ -22,82 +24,79 @@ function ct = matRad_importDicomCt(ctList, resolution, visBool)
 %
 % %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
-
 % %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %
-% Copyright 2015, Mark Bangert, on behalf of the matRad development team
-%
-% m.bangert@dkfz.de
-%
-% This file is part of matRad.
-%
-% matrad is free software: you can redistribute it and/or modify it under 
-% the terms of the GNU General Public License as published by the Free 
-% Software Foundation, either version 3 of the License, or (at your option)
-% any later version.
-%
-% matRad is distributed in the hope that it will be useful, but WITHOUT ANY
-% WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS
-% FOR A PARTICULAR PURPOSE. See the GNU General Public License for more
-% details.
-%
-% You should have received a copy of the GNU General Public License in the
-% file license.txt along with matRad. If not, see
-% <http://www.gnu.org/licenses/>.
+% Copyright 2015 the matRad development team. 
+% 
+% This file is part of the matRad project. It is subject to the license 
+% terms in the LICENSE file found in the top-level directory of this 
+% distribution and at https://github.com/e0404/matRad/LICENSES.txt. No part 
+% of the matRad project, including this file, may be copied, modified, 
+% propagated, or distributed except according to the terms contained in the 
+% LICENSE file.
 %
 % %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
 fprintf('\nimporting ct-cube...');
 
 %% processing input variables
-if nargin < 3
-    visBool = 0;
+if ~exist('visBool','var')
+  visBool = 0;
 end
 
-% creation of info list
+% creation of ctInfo list
 numOfSlices = size(ctList,1);
 fprintf('\ncreating info...')
 for i = 1:numOfSlices
-    tmpDicomInfo = dicominfo(ctList{i,1});
+
+    if verLessThan('matlab','9')
+        tmpDicomInfo = dicominfo(ctList{i,1});
+    else
+        tmpDicomInfo = dicominfo(ctList{i,1},'UseDictionaryVR',true);
+    end
     
     % remember relevant dicom info - do not record everything as some tags
     % might not been defined for individual files
-    info(i).PixelSpacing            = tmpDicomInfo.PixelSpacing;
-    info(i).ImagePositionPatient    = tmpDicomInfo.ImagePositionPatient;
-    info(i).SliceThickness          = tmpDicomInfo.SliceThickness;
-    info(i).ImageOrientationPatient = tmpDicomInfo.ImageOrientationPatient;
-    info(i).PatientPosition         = tmpDicomInfo.PatientPosition;
-    info(i).Rows                    = tmpDicomInfo.Rows;
-    info(i).Columns                 = tmpDicomInfo.Columns;
-    info(i).Width                   = tmpDicomInfo.Width;
-    info(i).Height                  = tmpDicomInfo.Height;
-    info(i).RescaleSlope            = tmpDicomInfo.RescaleSlope;
-    info(i).RescaleIntercept        = tmpDicomInfo.RescaleIntercept;
+    ctInfo(i).PixelSpacing            = tmpDicomInfo.PixelSpacing;
+    ctInfo(i).ImagePositionPatient    = tmpDicomInfo.ImagePositionPatient;
+    ctInfo(i).SliceThickness          = tmpDicomInfo.SliceThickness;
+    ctInfo(i).ImageOrientationPatient = tmpDicomInfo.ImageOrientationPatient;
+    ctInfo(i).PatientPosition         = tmpDicomInfo.PatientPosition;
+    ctInfo(i).Rows                    = tmpDicomInfo.Rows;
+    ctInfo(i).Columns                 = tmpDicomInfo.Columns;
+    ctInfo(i).Width                   = tmpDicomInfo.Width;
+    ctInfo(i).Height                  = tmpDicomInfo.Height;
+    ctInfo(i).RescaleSlope            = tmpDicomInfo.RescaleSlope;
+    ctInfo(i).RescaleIntercept        = tmpDicomInfo.RescaleIntercept;
+    
+    if i == 1
+        completeDicom = tmpDicomInfo;
+    end
     
     matRad_progress(i,numOfSlices);
 end
 
 % adjusting sequence of slices (filenames may not be ordered propperly....
-% e.g. CT1.dcm, CT10.dcm, CT100zCoordList = [info.ImagePositionPatient(1,3)]';.dcm, CT101.dcm,...
-CoordList = [info.ImagePositionPatient]';
+% e.g. CT1.dcm, CT10.dcm, CT100zCoordList = [ctInfo.ImagePositionPatient(1,3)]';.dcm, CT101.dcm,...
+CoordList = [ctInfo.ImagePositionPatient]';
 [~, indexing] = sort(CoordList(:,3)); % get sortation from z-coordinates
 
 ctList = ctList(indexing);
-info = info(indexing);
+ctInfo = ctInfo(indexing);
 
 %% check data set for consistency
-if size(unique([info.PixelSpacing]','rows'),1) > 1
+if size(unique([ctInfo.PixelSpacing]','rows'),1) > 1
     error('Different pixel size in different CT slices');
 end
 
-coordsOfFirstPixel = [info.ImagePositionPatient];
+coordsOfFirstPixel = [ctInfo.ImagePositionPatient];
 if numel(unique(coordsOfFirstPixel(1,:))) > 1 || numel(unique(coordsOfFirstPixel(2,:))) > 1
     error('Ct slices are not aligned');
 end
 if sum(diff(coordsOfFirstPixel(3,:))<=0) > 0
     error('Ct slices not monotonically increasing');
 end
-if numel(unique([info.Rows])) > 1 || numel(unique([info.Columns])) > 1
+if numel(unique([ctInfo.Rows])) > 1 || numel(unique([ctInfo.Columns])) > 1
     error('Ct slice sizes inconsistent');
 end
 
@@ -116,15 +115,17 @@ end
 % FFP     Feet First-Prone                  (not supported)
 % FFS     Feet First-Supine                 (supported)
 
-if isempty(regexp(info(1).PatientPosition,'S', 'once'))
+if isempty(regexp(ctInfo(1).PatientPosition,{'S','P'}, 'once'))
     error(['This Patient Position is not supported by matRad.'...
-        ' As of now only ''HFS'' (Head First-Supine) and ''FFS'''...
-        ' (Feet First-Supine) can be processed.'])    
+        ' As of now only ''HFS'' (Head First-Supine), ''FFS'''...
+        ' (Feet First-Supine), '...    
+        '''HFP'' (Head First-Prone), and ''FFP'''...
+        ' (Feet First-Prone) can be processed.'])    
 end
 
 %% creation of ct-cube
 fprintf('reading slices...')
-origCt = zeros(info(1).Height, info(1).Width, numOfSlices);
+origCt = zeros(ctInfo(1).Height, ctInfo(1).Width, numOfSlices);
 for i = 1:numOfSlices
     currentFilename = ctList{i};
     [currentImage, map] = dicomread(currentFilename);
@@ -157,31 +158,31 @@ fprintf('\nz-coordinates taken from ImagePositionPatient\n')
 
 % The x- & y-direction in lps-coordinates are specified in:
 % ImageOrientationPatient
-xDir = info(1).ImageOrientationPatient(1:3); % lps: [1;0;0]
-yDir = info(1).ImageOrientationPatient(4:6); % lps: [0;1;0]
+xDir = ctInfo(1).ImageOrientationPatient(1:3); % lps: [1;0;0]
+yDir = ctInfo(1).ImageOrientationPatient(4:6); % lps: [0;1;0]
 nonStandardDirection = false;
 
 % correct x- & y-direction
-
-if xDir(1) == 1 && xDir(2) == 0 && xDir(3) == 0
-    fprintf('x-direction OK\n')
-elseif xDir(1) == -1 && xDir(2) == 0 && xDir(3) == 0
-    fprintf('\nMirroring x-direction...')
-    origCt = flip(origCt,1);
-    fprintf('finished!\n')
-else
-    nonStandardDirection = true;
-end
-    
-if yDir(1) == 0 && yDir(2) == 1 && yDir(3) == 0
-    fprintf('y-direction OK\n')
-elseif yDir(1) == 0 && yDir(2) == -1 && yDir(3) == 0
-    fprintf('\nMirroring y-direction...')
-    origCt = flip(origCt,2);
-    fprintf('finished!\n')
-else
-    nonStandardDirection = true;
-end
+% 
+% if xDir(1) == 1 && xDir(2) == 0 && xDir(3) == 0
+%     fprintf('x-direction OK\n')
+% elseif xDir(1) == -1 && xDir(2) == 0 && xDir(3) == 0
+%     fprintf('\nMirroring x-direction...')
+%     origCt = flip(origCt,1);
+%     fprintf('finished!\n')
+% else
+%     nonStandardDirection = true;
+% end
+%     
+% if yDir(1) == 0 && yDir(2) == 1 && yDir(3) == 0
+%     fprintf('y-direction OK\n')
+% elseif yDir(1) == 0 && yDir(2) == -1 && yDir(3) == 0
+%     fprintf('\nMirroring y-direction...')
+%     origCt = flip(origCt,2);
+%     fprintf('finished!\n')
+% else
+%     nonStandardDirection = true;
+% end
 
 if nonStandardDirection
     fprintf(['Non-standard patient orientation.\n'...
@@ -190,25 +191,48 @@ end
 
 %% interpolate cube
 fprintf('\nInterpolating CT cube...');
-ct = matRad_interpCtCube(origCt, info, resolution);
+if exist('grid','var')
+    ct = matRad_interpDicomCtCube(origCt, ctInfo, resolution, grid);
+else
+    ct = matRad_interpDicomCtCube(origCt, ctInfo, resolution);
+end
 fprintf('finished!\n');
 
 %% remember some parameters of original dicom
-ct.dicomInfo.PixelSpacing            = info(1).PixelSpacing;
-                                       tmp = [info.ImagePositionPatient];
+ct.dicomInfo.PixelSpacing            = ctInfo(1).PixelSpacing;
+                                       tmp = [ctInfo.ImagePositionPatient];
 ct.dicomInfo.SlicePositions          = tmp(3,:);
-ct.dicomInfo.SliceThickness          = [info.SliceThickness];
-ct.dicomInfo.ImagePositionPatient    = info(1).ImagePositionPatient;
-ct.dicomInfo.ImageOrientationPatient = info(1).ImageOrientationPatient;
-ct.dicomInfo.PatientPosition         = info(1).PatientPosition;
-ct.dicomInfo.Width                   = info(1).Width;
-ct.dicomInfo.Height                  = info(1).Height;
-ct.dicomInfo.RescaleSlope            = info(1).RescaleSlope;
-ct.dicomInfo.RescaleIntercept        = info(1).RescaleIntercept;
+ct.dicomInfo.SliceThickness          = [ctInfo.SliceThickness];
+ct.dicomInfo.ImagePositionPatient    = ctInfo(1).ImagePositionPatient;
+ct.dicomInfo.ImageOrientationPatient = ctInfo(1).ImageOrientationPatient;
+ct.dicomInfo.PatientPosition         = ctInfo(1).PatientPosition;
+ct.dicomInfo.Width                   = ctInfo(1).Width;
+ct.dicomInfo.Height                  = ctInfo(1).Height;
+ct.dicomInfo.RescaleSlope            = ctInfo(1).RescaleSlope;
+ct.dicomInfo.RescaleIntercept        = ctInfo(1).RescaleIntercept;
+if isfield(completeDicom, 'Manufacturer')
+ct.dicomInfo.Manufacturer            = completeDicom.Manufacturer;
+end
+if isfield(completeDicom, 'ManufacturerModelName')
+ct.dicomInfo.ManufacturerModelName   = completeDicom.ManufacturerModelName;
+end
+if isfield(completeDicom, 'ConvolutionKernel')
+ct.dicomInfo.ConvolutionKernel       = completeDicom.ConvolutionKernel;
+end
 
-% convert to water equivalent electron densities
-fprintf('\nconversion of ct-Cube to waterEqD...');
-ct = matRad_calcWaterEqD(ct);
+% store patientName only if user wants to
+if isfield(completeDicom,'PatientName') && dicomMetaBool == true
+    ct.dicomInfo.PatientName         = completeDicom.PatientName;
+end
+if dicomMetaBool == true
+    ct.dicomMeta                     = completeDicom;
+end
+
+ct.timeStamp = datestr(clock);
+
+% convert to Hounsfield units
+fprintf('\nconversion of ct-Cube to Hounsfield units...');
+ct = matRad_calcHU(ct);
 fprintf('finished!\n');
 
 end

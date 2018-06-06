@@ -19,29 +19,16 @@ function [vAlpha, vBeta] = matRad_calcLQParameter(vRadDepths,mTissueClass,baseDa
 %
 % %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
-
-
 % %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %
-% Copyright 2015, Mark Bangert, on behalf of the matRad development team
-%
-% m.bangert@dkfz.de
-%
-% This file is part of matRad.
-%
-% matrad is free software: you can redistribute it and/or modify it under 
-% the terms of the GNU General Public License as published by the Free 
-% Software Foundation, either version 3 of the License, or (at your option)
-% any later version.
-%
-% matRad is distributed in the hope that it will be useful, but WITHOUT ANY
-% WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS
-% FOR A PARTICULAR PURPOSE. See the GNU General Public License for more
-% details.
-%
-% You should have received a copy of the GNU General Public License in the
-% file license.txt along with matRad. If not, see
-% <http://www.gnu.org/licenses/>.
+% Copyright 2015 the matRad development team. 
+% 
+% This file is part of the matRad project. It is subject to the license 
+% terms in the LICENSE file found in the top-level directory of this 
+% distribution and at https://github.com/e0404/matRad/LICENSES.txt. No part 
+% of the matRad project, including this file, may be copied, modified, 
+% propagated, or distributed except according to the terms contained in the 
+% LICENSE file.
 %
 % %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
@@ -54,7 +41,10 @@ numOfTissueClass = size(baseData(1).alpha,2);
 depths = baseData.depths + baseData.offset;
 
 for i = 1:numOfTissueClass
-    vAlpha(mTissueClass==i) = interp1(depths,baseData.alpha(:,i),vRadDepths(mTissueClass==i),'linear');
-    vBeta(mTissueClass==i)  = interp1(depths,baseData.beta(:,i), vRadDepths(mTissueClass==i),'linear');
+    mask = mTissueClass == i;
+    if any(mask)
+        vAlpha(mask) = matRad_interp1(depths,baseData.alpha(:,i),vRadDepths(mask));
+        vBeta(mask)  = matRad_interp1(depths,baseData.beta(:,i), vRadDepths(mask));
+    end
 end
 

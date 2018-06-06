@@ -20,25 +20,14 @@ function matRad_visApertureInfo(apertureInfo,mode)
 
 % %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %
-% Copyright 2015, Mark Bangert, on behalf of the matRad development team
-%
-% m.bangert@dkfz.de
-%
-% This file is part of matRad.
-%
-% matrad is free software: you can redistribute it and/or modify it under
-% the terms of the GNU General Public License as published by the Free
-% Software Foundation, either version 3 of the License, or (at your option)
-% any later version.
-%
-% matRad is distributed in the hope that it will be useful, but WITHOUT ANY
-% WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS
-% FOR A PARTICULAR PURPOSE. See the GNU General Public License for more
-% details.
-%
-% You should have received a copy of the GNU General Public License in the
-% file license.txt along with matRad. If not, see
-% <http://www.gnu.org/licenses/>.
+% Copyright 2015 the matRad development team. 
+% 
+% This file is part of the matRad project. It is subject to the license 
+% terms in the LICENSE file found in the top-level directory of this 
+% distribution and at https://github.com/e0404/matRad/LICENSES.txt. No part 
+% of the matRad project, including this file, may be copied, modified, 
+% propagated, or distributed except according to the terms contained in the 
+% LICENSE file.
 %
 % %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
@@ -60,7 +49,7 @@ color(:,2) = 0;
 for i=1:numOfBeams
 
     % open new figure for every beam
-    figure
+    figure('units','inches')
 
     % get the MLC dimensions for this beam
     minX = apertureInfo.beam(i).MLCWindow(1);
@@ -79,6 +68,8 @@ for i=1:numOfBeams
     
     subplotColumns = ceil(apertureInfo.beam(i).numOfShapes/2);
     subplotLines   = ceil(apertureInfo.beam(i).numOfShapes/subplotColumns);
+    %adjust figure position
+    set(gcf,'pos',[0 0 1.8*subplotColumns 3*subplotLines])
     
     % loop over all shapes of the beam 
     for j = 1:apertureInfo.beam(i).numOfShapes
@@ -89,7 +80,7 @@ for i=1:numOfBeams
         title(['Beam: ' num2str(i) ' Shape: ' num2str(j) ' w=' ...
                 num2str(apertureInfo.beam(i).shape(j).weight,2)],...
                     'Fontsize',8)
-        colorInd = ceil((apertureInfo.beam(i).shape(j).weight/wMax)*61+eps);
+        colorInd = max(ceil((apertureInfo.beam(i).shape(j).weight/wMax)*61+eps),1);
         set(gca,'Color',color(colorInd,:));
         
         hold on

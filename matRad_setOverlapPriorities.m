@@ -1,4 +1,4 @@
-function cst = matRad_setOverlapPriorities(cst)
+function [cst,overlapPriorityCube] = matRad_setOverlapPriorities(cst,ctDim)
 % %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 % function to handle overlap priorities during fluence optimizaiton and
 % dose calculation. If you have overlapping volumes of interest you need to
@@ -6,12 +6,15 @@ function cst = matRad_setOverlapPriorities(cst)
 % 
 % call
 %   cst = matRad_considerOverlap(cst)
+%   [cst, overlapPriorityCube] = matRad_setOverlapPriorities(cst,cubeDim)
 %
 % input
-%   cst:    cst file
+%   cst:        cst file
+%   ctDim:      dimension of the ct for overlap cube claculation (optional)
 %
 % output
-%   cst:    updated cst file considering overlap priorities
+%   cst:                updated cst file considering overlap priorities
+%   overlapPriorityCube cube visualizing the overlap priority (optional)
 %
 % References
 %   -
@@ -20,50 +23,57 @@ function cst = matRad_setOverlapPriorities(cst)
 
 % %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %
-% Copyright 2015, Mark Bangert, on behalf of the matRad development team
-%
-% m.bangert@dkfz.de
-%
-% This file is part of matRad.
-%
-% matrad is free software: you can redistribute it and/or modify it under 
-% the terms of the GNU General Public License as published by the Free 
-% Software Foundation, either version 3 of the License, or (at your option)
-% any later version.
-%
-% matRad is distributed in the hope that it will be useful, but WITHOUT ANY
-% WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS
-% FOR A PARTICULAR PURPOSE. See the GNU General Public License for more
-% details.
-%
-% You should have received a copy of the GNU General Public License in the
-% file license.txt along with matRad. If not, see
-% <http://www.gnu.org/licenses/>.
+% Copyright 2015 the matRad development team. 
+% 
+% This file is part of the matRad project. It is subject to the license 
+% terms in the LICENSE file found in the top-level directory of this 
+% distribution and at https://github.com/e0404/matRad/LICENSES.txt. No part 
+% of the matRad project, including this file, may be copied, modified, 
+% propagated, or distributed except according to the terms contained in the 
+% LICENSE file.
 %
 % %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
+numOfCtScenarios = unique(cellfun(@(x)numel(x),cst(:,4)));
 
+if numel(numOfCtScenarios) > 1
+    error('Inconsistent number of segmentations in cst struct.');
+end  
+
+for i = 1:numOfCtScenarios
+    
     % consider VOI priorities
-    for i = 1:size(cst,1)
+    for j = 1:size(cst,1)
          
-        idx = cst{i,4};          
+        idx = cst{j,4}{i};          
         
         for k = 1:size(cst,1)
-            if cst{k,5}.Priority < cst{i,5}.Priority && ~(i==k)
+            if cst{k,5}.Priority < cst{j,5}.Priority && ~(j==k) && ~isempty(cst{k,6})
                 % remove indices from VOI with higher priority from current VOI
-                idx = setdiff(idx,cst{k,4});
+                % if an objective has been defined
+                idx = setdiff(idx,cst{k,4}{i});
             end
         end
         
-        cst{i,4} = idx;
+        cst{j,4}{i} = idx;
         
-        if isempty(cst{i,4}) && ~isempty(cst{i,6})
-            warning([cst{i,2} ': Objective(s) for inverse planning defined ' ...
+        if isempty(cst{j,4}{i}) && ~isempty(cst{j,6})
+            error([cst{j,2} ': Objective(s) and/or constraints for inverse planning defined ' ...
                  'but structure overlapped by structure with higher overlap priority.' ...
                  'Objective(s) will not be considered during optimization']); 
         end
          
     end
+end
+
+%Calculate the overlap cube if requested
+if nargout == 2 && nargin == 2
+   overlapPriorityCube = zeros(ctDim);
+    for i = 1:size(cst,1)
+        overlapPriorityCube(cst{i,4}{1}) = cst{i,5}.Priority;
+    end
+end
+    
 
 end
 

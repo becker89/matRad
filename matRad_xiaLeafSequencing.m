@@ -11,6 +11,7 @@ function resultGUI = matRad_xiaLeafSequencing(resultGUI,stf,dij,numOfLevels,visB
 %   resultGUI:          resultGUI struct to which the output data will be added, if
 %                       this field is empty resultGUI struct will be created
 %   stf:                matRad steering information struct
+%   dij:                matRad's dij matrix
 %   numOfLevels:        number of stratification levels
 %   visBool:            toggle on/off visualization (optional)
 %
@@ -25,25 +26,14 @@ function resultGUI = matRad_xiaLeafSequencing(resultGUI,stf,dij,numOfLevels,visB
 
 % %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %
-% Copyright 2015, Mark Bangert, on behalf of the matRad development team
-%
-% m.bangert@dkfz.de
-%
-% This file is part of matRad.
-%
-% matrad is free software: you can redistribute it and/or modify it under 
-% the terms of the GNU General Public License as published by the Free 
-% Software Foundation, either version 3 of the License, or (at your option)
-% any later version.
-%
-% matRad is distributed in the hope that it will be useful, but WITHOUT ANY
-% WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS
-% FOR A PARTICULAR PURPOSE. See the GNU General Public License for more
-% details.
-%
-% You should have received a copy of the GNU General Public License in the
-% file license.txt along with matRad. If not, see
-% <http://www.gnu.org/licenses/>.
+% Copyright 2015 the matRad development team. 
+% 
+% This file is part of the matRad project. It is subject to the license 
+% terms in the LICENSE file found in the top-level directory of this 
+% distribution and at https://github.com/e0404/matRad/LICENSES.txt. No part 
+% of the matRad project, including this file, may be copied, modified, 
+% propagated, or distributed except according to the terms contained in the 
+% LICENSE file.
 %
 % %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
@@ -105,10 +95,8 @@ for i = 1:numOfBeams
     %Save weights in fluence matrix.
     fluenceMx(indInFluenceMx) = wOfCurrBeams;
     
-    % prepare sequencer
+    % Stratification
     calFac = max(fluenceMx(:));
-
-    %Stratification
     D_k = round(fluenceMx/calFac*numOfLevels); 
     
     % Save the stratification in the initial intensity matrix D_0.
@@ -272,15 +260,12 @@ resultGUI.wSequenced = sequencing.w;
 resultGUI.sequencing   = sequencing;
 resultGUI.apertureInfo = matRad_sequencing2ApertureInfo(sequencing,stf);
 
-Tmp = matRad_mxCalcDose(dij,sequencing.w);
-resultGUI.physicalDose = Tmp.physicalDose;
+resultGUI.physicalDose = reshape(dij.physicalDose{1} * sequencing.w,dij.dimensions);
 
 % if weights exists from an former DAO remove it
 if isfield(resultGUI,'wDao')
     resultGUI = rmfield(resultGUI,'wDao');
 end
 
-
 end
-
 
